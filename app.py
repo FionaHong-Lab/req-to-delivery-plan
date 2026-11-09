@@ -30,8 +30,16 @@ def initialize_state() -> None:
 def main() -> None:
     initialize_state()
     online = online_mode_available()
+    show_guidance = st.sidebar.toggle("讲解模式", value=True, help="关闭后仅展示方案本身，适合截图。")
+    st.sidebar.caption("打开时显示每一部分的阅读说明和面试讲法。")
     st.title("需求 → AI/Agent 交付方案生成器")
     st.caption("面试演示工具｜所有内置内容均为虚构的示例数据，不代表真实客户或项目结果。")
+    with st.expander("这个工具是做什么的", expanded=True):
+        st.write("**输入**：一段客户提出的模糊 AI 需求。")
+        st.write("**输出**：一份交付经理视角的落地方案（8 部分）。")
+        st.write("**价值**：把“需求 → 能上线”中间的拆解过程标准化，先出一版再和客户对齐。")
+    st.graphviz_chart("digraph { rankdir=LR; node [shape=box style=rounded]; 客户需求 -> 摘要 -> 场景拆解 -> 边界划分 -> 风险 -> 验收 -> 灰度回滚 -> 上线计划 -> 待澄清 }")
+    st.markdown("**三步怎么用**：① 左侧选一个示例　② 点“展示示例方案”　③ 按 1→8 顺序看标签，重点看 3、4、6。")
 
     left, right = st.columns([1, 2], gap="large")
     examples = list_examples()
@@ -50,14 +58,14 @@ def main() -> None:
                 format_func=lambda key: EXAMPLE_LABELS.get(key, key),
             )
             st.text_area("示例需求（只读）", value=examples[selected_id], height=180, disabled=True)
-            generate_clicked = st.button("展示示例方案", type="primary", use_container_width=True)
+            generate_clicked = st.button("展示示例方案", type="primary", width="stretch")
             if generate_clicked:
                 st.session_state.result = GenerationResult(
                     plan=load_example(selected_id), mode="离线示例", message="正在展示虚构的预生成示例数据。"
                 )
         else:
             requirement = st.text_area("粘贴客户需求", placeholder="例如：我们希望……", height=220)
-            generate_clicked = st.button("生成交付方案", type="primary", use_container_width=True)
+            generate_clicked = st.button("生成交付方案", type="primary", width="stretch")
             if generate_clicked:
                 if not requirement.strip():
                     st.warning("请先粘贴一段需求，或切换到内置示例。")
@@ -79,10 +87,13 @@ def main() -> None:
 
         first, second = st.columns(2)
         with first:
-            st.download_button("下载 Markdown", data=plan_as_markdown(result.plan), file_name="delivery-plan.md", mime="text/markdown", use_container_width=True)
+            st.download_button("下载 Markdown", data=plan_as_markdown(result.plan), file_name="delivery-plan.md", mime="text/markdown", width="stretch")
         with second:
-            st.download_button("下载 JSON", data=plan_as_json(result.plan), file_name="delivery-plan.json", mime="application/json", use_container_width=True)
-        render_plan(result.plan, default_tab=st.query_params.get("tab"))
+            st.download_button("下载 JSON", data=plan_as_json(result.plan), file_name="delivery-plan.json", mime="application/json", width="stretch")
+        render_plan(result.plan, show_guidance=show_guidance, default_tab=st.query_params.get("tab"))
+
+    with st.expander("术语小抄"):
+        st.markdown("- **Workflow**：规则固定、可重复执行的流程动作。\n- **Agent**：需要理解上下文、归纳或提出建议的助手。\n- **Human-in-the-loop**：关键决定必须有人确认的机制。\n- **灰度**：先在小范围使用并观察，再决定是否放大。\n- **回滚**：发现红线后切回安全的人工或旧流程。\n- **验收样本**：用于证明方案能否通过的、有标准答案的案例。\n- **兜底**：系统无法可靠处理时的安全处理路径。\n- **交接点**：从系统交给明确责任人的条件和去向。")
 
 
 if __name__ == "__main__":

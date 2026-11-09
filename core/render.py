@@ -1,65 +1,86 @@
-"""将 DeliveryPlan 渲染为 Streamlit 页面和可下载 Markdown。"""
+"""将 DeliveryPlan 渲染为 Streamlit 页面和不含讲解内容的 Markdown。"""
 
 from __future__ import annotations
 
 from core.schema import DeliveryPlan
 
 
+TAB_GUIDANCE = {
+    "摘要": ("客户到底要解决什么问题，怎样判断成功？", "没有共同目标，后面的功能和指标会各说各话。", "先看业务目标、现状痛点，再看带“需确认”的示例目标值。"),
+    "场景": ("一句需求被拆成哪些可执行的业务场景？", "不拆场景，团队无法确认谁在何时提供什么输入。", "按入口→校验→判断→人工例外→回写→复盘，查看触发、输入和系统。"),
+    "边界": ("每个场景由 Workflow、Agent 还是 Human 主负责？", "不划边界，模型容易越权，团队也不知道出错由谁接手。", "Workflow 是固定规则；Agent 处理上下文判断；Human 负责高风险和不可逆决定。重点看交接条件。"),
+    "风险": ("什么可能出错，谁负责预警和缓解？", "不提前看数据、模型、流程、合规和组织风险，上线后只能被动救火。", "先看概率×影响，再看预警信号、缓解措施和负责人。"),
+    "验收": ("上线前怎样证明方案真的能用？", "没有样本、方法和通过标准，所谓“效果不错”无法被复核。", "每条都看定义、示例目标值、测试方法、样本量和通过标准。"),
+    "灰度/回滚": ("先给多大范围使用，出问题怎样退回？", "没有小范围观察和回退路径，错误会直接扩大到全量。", "看进入条件、观察时长、负责人；再看三类回滚触发。"),
+    "上线计划": ("从澄清到常态运行，谁在何时交付什么？", "没有退出标准，项目容易一直推进却没有真正的放行点。", "按周看交付物、参与方和每个阶段的退出标准。"),
+    "待澄清": ("哪些业务事实还缺，必须问客户？", "把假设当事实，会让后续的规则、指标和责任全部失真。", "按业务、数据、系统、合规分组，优先确认会改变边界的问题。"),
+}
+
+INTERVIEW_TALKS = {
+    "摘要": "我先不谈模型，先对齐客户真正要改善的业务问题。所有目标值都只是示例，必须回到客户基线确认。",
+    "场景": "我把一句模糊需求拆成连续场景，方便业务、研发和运营确认输入、输出和依赖是否完整。",
+    "边界": "这里不是把 AI 做满，而是把确定动作、判断动作和责任动作分开；交接点就是出错时谁接手。",
+    "风险": "我会在上线前让风险有主人、有预警，而不是等投诉出现才讨论模型问题。",
+    "验收": "验收不只看准确率，还要验证该转人工的有没有转、异常能不能退回、业务方是否愿意用。",
+    "灰度/回滚": "先用小范围证据决定是否放大；一旦触发红线，先切回人工，再复盘原因。",
+    "上线计划": "每个阶段都有交付物、参与方和退出标准，避免“开发完成”被误当成“可以上线”。",
+    "待澄清": "这些不是没做完，而是我主动把会改变方案的假设列出来，带去和客户对齐。",
+}
+
+
+def _table(headers: list[str], rows: list[list[str]]) -> list[str]:
+    lines = ["| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * len(headers)) + " |"]
+    return lines + ["| " + " | ".join(row) + " |" for row in rows]
+
+
 def plan_as_markdown(plan: DeliveryPlan) -> str:
-    lines = ["# AI/Agent 交付方案", "", "## 1. 需求摘要", f"- **一句话概括**：{plan.summary.one_sentence}", f"- **业务目标**：{plan.summary.business_goal}", "- **关键指标**："]
-    lines.extend(f"  - {metric}" for metric in plan.summary.key_metrics)
-
-    lines.extend(["", "## 2. 场景拆解", "| 场景 | 触发条件 | 输入 | 期望输出 | 频次/量级 |", "| --- | --- | --- | --- | --- |"])
-    lines.extend(f"| {item.name} | {item.trigger} | {'；'.join(item.inputs)} | {item.expected_output} | {item.frequency_scale} |" for item in plan.scenarios)
-
-    lines.extend(["", "## 3. Workflow / Agent / Human 边界", "| 场景 | 归属 | 理由 | 人机交接点 |", "| --- | --- | --- | --- |"])
-    lines.extend(f"| {item.scenario} | {item.owner} | {item.reason} | {item.handoff} |" for item in plan.boundary)
-
-    lines.extend(["", "## 4. 风险清单", "| 风险 | 类型 | 概率 | 影响 | 缓解措施 | 负责人 |", "| --- | --- | --- | --- | --- |"])
-    lines.extend(f"| {item.description} | {item.risk_type} | {item.probability} | {item.impact} | {item.mitigation} | {item.owner_role} |" for item in plan.risks)
-
-    lines.extend(["", "## 5. 验收标准", "| 指标 | 目标值 | 测试方法 | 样本量 |", "| --- | --- | --- | --- |"])
-    lines.extend(f"| {item.metric} | {item.target} | {item.test_method} | {item.sample_size} |" for item in plan.acceptance)
-
-    lines.extend(["", "## 6. 灰度与回滚", "| 阶段 | 范围比例 | 进入条件 | 观察指标 |", "| --- | --- | --- | --- |"])
-    lines.extend(f"| {item.stage} | {item.scope_percentage} | {item.entry_condition} | {'；'.join(item.observation_metrics)} |" for item in plan.rollout.phases)
-    lines.extend(["", "### 回滚计划", f"- **触发条件**：{plan.rollout.rollback.trigger_condition}", f"- **回滚动作**：{plan.rollout.rollback.rollback_action}", f"- **恢复时长**：{plan.rollout.rollback.recovery_time}"])
-
-    lines.extend(["", "## 7. 上线里程碑", "| 阶段 | 时间 | 交付物 | 参与方 |", "| --- | --- | --- | --- |"])
-    lines.extend(f"| {item.stage} | {item.timeline} | {'；'.join(item.deliverables)} | {'；'.join(item.participants)} |" for item in plan.launch_plan)
-
-    lines.extend(["", "## 8. 待澄清问题"])
-    lines.extend(f"- {question}" for question in plan.open_questions)
-    lines.extend(["", "> 注：本工具输出为方案草稿；规则、阈值、指标与上线决定须由客户责任人确认。"])
+    lines = ["# AI/Agent 交付方案", "", "> **示例数据声明**：本方案中的场景、目标值和安排仅用于演示；所有目标值需与客户确认。", "", "## 1. 需求摘要", f"- **一句话概括**：{plan.summary.one_sentence}", f"- **业务目标**：{plan.summary.business_goal}", "- **业务背景**："]
+    lines += [f"  - {item}" for item in plan.summary.business_background] + ["- **现状痛点**:"] + [f"  - {item}" for item in plan.summary.pain_points]
+    lines += _table(["指标", "当前值", "示例目标值"], [[m.metric, m.current_value, m.example_target] for m in plan.summary.key_metrics])
+    lines += ["", "## 2. 场景拆解"] + _table(["场景", "触发", "输入", "期望输出", "频次", "涉及系统"], [[x.name, x.trigger, "；".join(x.inputs), x.expected_output, x.frequency_scale, "；".join(x.involved_systems)] for x in plan.scenarios])
+    lines += ["", "## 3. Workflow / Agent / Human 边界"] + _table(["场景", "归属", "理由", "失败时交给谁", "交接条件"], [[x.scenario, x.owner, x.reason, x.failed_handoff_to, x.handoff_condition] for x in plan.boundary])
+    lines += ["", "### 人机交接总规则"] + [f"- {x}" for x in plan.human_handoff_rules]
+    lines += ["", "## 4. 风险清单"] + _table(["风险", "类型", "概率", "影响", "缓解", "预警", "负责人"], [[x.description, x.risk_type, x.probability, x.impact, x.mitigation, x.early_warning_signal, x.owner_role] for x in plan.risks])
+    lines += ["", "## 5. 验收标准"] + _table(["指标", "定义", "示例目标值", "方法", "样本量", "通过标准"], [[x.metric, x.metric_definition, x.example_target, x.test_method, x.sample_size, x.pass_criteria] for x in plan.acceptance])
+    lines += ["", "## 6. 灰度与回滚"] + _table(["阶段", "范围", "进入条件", "观察指标", "观察时长", "负责人"], [[x.stage, x.scope_percentage, x.entry_condition, "；".join(x.observation_metrics), x.observation_duration, x.owner_role] for x in plan.rollout.phases])
+    lines += ["", "### 回滚计划"] + _table(["触发条件", "回滚动作", "恢复时长"], [[x.trigger_condition, x.rollback_action, x.recovery_time] for x in plan.rollout.rollback]) + ["", f"- **回滚后复盘**：{plan.rollout.post_rollback_review}"]
+    lines += ["", "## 7. 上线里程碑"] + _table(["阶段", "时间", "交付物", "参与方", "退出标准"], [[x.stage, x.timeline, "；".join(x.deliverables), "；".join(x.participants), x.exit_criteria] for x in plan.launch_plan])
+    lines += ["", "## 8. 待澄清问题"] + _table(["分组", "问题"], [[x.category, x.question] for x in plan.open_questions])
     return "\n".join(lines)
 
 
-def render_plan(plan: DeliveryPlan, default_tab: str | None = None) -> None:
+def _guidance(label: str, show: bool) -> None:
+    if not show:
+        return
     import streamlit as st
+    question, reason, how = TAB_GUIDANCE[label]
+    st.info(f"**回答什么问题**：{question}\n\n**为什么要做**：{reason}\n\n**怎么读**：{how}")
 
+
+def _talk(label: str, show: bool) -> None:
+    if show:
+        import streamlit as st
+        st.caption("面试讲法")
+        st.write(INTERVIEW_TALKS[label])
+
+
+def render_plan(plan: DeliveryPlan, show_guidance: bool = True, default_tab: str | None = None) -> None:
+    import streamlit as st
     labels = ["1. 摘要", "2. 场景", "3. 边界", "4. 风险", "5. 验收", "6. 灰度/回滚", "7. 上线计划", "8. 待澄清"]
     tabs = st.tabs(labels, default=default_tab if default_tab in labels else None)
-
     with tabs[0]:
-        st.subheader(plan.summary.one_sentence)
-        st.write(plan.summary.business_goal)
-        st.caption("关键指标")
-        st.write(" · ".join(plan.summary.key_metrics))
+        _guidance("摘要", show_guidance); st.subheader(plan.summary.one_sentence); st.write(plan.summary.business_goal); st.write("**业务背景**"); st.write(plan.summary.business_background); st.write("**现状痛点**"); st.write(plan.summary.pain_points); st.dataframe([x.model_dump() for x in plan.summary.key_metrics], width="stretch", hide_index=True); _talk("摘要", show_guidance)
     with tabs[1]:
-        st.dataframe([item.model_dump() for item in plan.scenarios], use_container_width=True, hide_index=True)
+        _guidance("场景", show_guidance); st.dataframe([x.model_dump() for x in plan.scenarios], width="stretch", hide_index=True); _talk("场景", show_guidance)
     with tabs[2]:
-        st.dataframe([item.model_dump() for item in plan.boundary], use_container_width=True, hide_index=True)
+        _guidance("边界", show_guidance); st.dataframe([x.model_dump() for x in plan.boundary], width="stretch", hide_index=True); st.write("**人机交接总规则**"); st.write(plan.human_handoff_rules); _talk("边界", show_guidance)
     with tabs[3]:
-        st.dataframe([item.model_dump() for item in plan.risks], use_container_width=True, hide_index=True)
+        _guidance("风险", show_guidance); st.dataframe([x.model_dump() for x in plan.risks], width="stretch", hide_index=True); _talk("风险", show_guidance)
     with tabs[4]:
-        st.dataframe([item.model_dump() for item in plan.acceptance], use_container_width=True, hide_index=True)
+        _guidance("验收", show_guidance); st.dataframe([x.model_dump() for x in plan.acceptance], width="stretch", hide_index=True); _talk("验收", show_guidance)
     with tabs[5]:
-        st.subheader("灰度计划")
-        st.dataframe([item.model_dump() for item in plan.rollout.phases], use_container_width=True, hide_index=True)
-        st.subheader("回滚计划")
-        st.dataframe([plan.rollout.rollback.model_dump()], use_container_width=True, hide_index=True)
+        _guidance("灰度/回滚", show_guidance); st.subheader("灰度计划"); st.dataframe([x.model_dump() for x in plan.rollout.phases], width="stretch", hide_index=True); st.subheader("回滚计划"); st.dataframe([x.model_dump() for x in plan.rollout.rollback], width="stretch", hide_index=True); st.write(f"**回滚后复盘**：{plan.rollout.post_rollback_review}"); _talk("灰度/回滚", show_guidance)
     with tabs[6]:
-        st.dataframe([item.model_dump() for item in plan.launch_plan], use_container_width=True, hide_index=True)
+        _guidance("上线计划", show_guidance); st.dataframe([x.model_dump() for x in plan.launch_plan], width="stretch", hide_index=True); _talk("上线计划", show_guidance)
     with tabs[7]:
-        for question in plan.open_questions:
-            st.markdown(f"- {question}")
+        _guidance("待澄清", show_guidance); st.dataframe([x.model_dump() for x in plan.open_questions], width="stretch", hide_index=True); _talk("待澄清", show_guidance)

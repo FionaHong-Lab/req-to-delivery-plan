@@ -20,6 +20,14 @@ def test_all_example_jsons_match_delivery_plan_schema() -> None:
         assert plan.rollout.phases
         assert plan.launch_plan
         assert plan.open_questions
+        assert len(plan.scenarios) >= 5
+        assert len(plan.risks) >= 6
+        assert len(plan.acceptance) >= 5
+        assert len(plan.rollout.phases) >= 3
+        assert len(plan.rollout.rollback) >= 3
+        assert len(plan.launch_plan) >= 6
+        assert len(plan.open_questions) >= 6
+        assert {item.name for item in plan.scenarios} == {item.scenario for item in plan.boundary}
 
 
 def test_boundaries_only_use_expected_owners() -> None:
