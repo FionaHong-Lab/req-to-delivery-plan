@@ -81,7 +81,7 @@ def main() -> None:
             st.download_button("下载 Markdown", data=plan_as_markdown(result.plan), file_name="delivery-plan.md", mime="text/markdown", use_container_width=True)
         with second:
             st.download_button("下载 JSON", data=plan_as_json(result.plan), file_name="delivery-plan.json", mime="application/json", use_container_width=True)
-        render_plan(result.plan)
+        render_plan(result.plan, default_tab=st.query_params.get("tab"))
 
 
 if __name__ == "__main__":

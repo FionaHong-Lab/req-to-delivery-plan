@@ -34,10 +34,11 @@ def plan_as_markdown(plan: DeliveryPlan) -> str:
     return "\n".join(lines)
 
 
-def render_plan(plan: DeliveryPlan) -> None:
+def render_plan(plan: DeliveryPlan, default_tab: str | None = None) -> None:
     import streamlit as st
 
-    tabs = st.tabs(["1. 摘要", "2. 场景", "3. 边界", "4. 风险", "5. 验收", "6. 灰度/回滚", "7. 上线计划", "8. 待澄清"])
+    labels = ["1. 摘要", "2. 场景", "3. 边界", "4. 风险", "5. 验收", "6. 灰度/回滚", "7. 上线计划", "8. 待澄清"]
+    tabs = st.tabs(labels, default=default_tab if default_tab in labels else None)
 
     with tabs[0]:
         st.subheader(plan.summary.one_sentence)
