@@ -1,0 +1,39 @@
+{
+  "summary": {
+    "one_sentence": "为虚构企业软件公司的线索处理设计提取、规则评分、话术草拟和人工确认的交付方案。",
+    "business_goal": "减少销售整理重复信息的时间，并让高价值或信息冲突线索得到及时人工判断。",
+    "key_metrics": ["字段提取完整率（待确认）", "人工接受的分级建议比例", "CRM 写入成功率", "高价值线索响应时长"]
+  },
+  "scenarios": [
+    {"name": "线索信息提取", "trigger": "官网表单或聊天记录进入待处理队列", "inputs": ["表单字段", "聊天记录", "授权状态"], "expected_output": "结构化公司、联系人、需求和下一步信息", "frequency_scale": "日常高频；量级待客户确认"},
+    {"name": "分级与跟进草稿", "trigger": "信息提取完成且具备评分字段", "inputs": ["结构化线索", "已确认评分规则", "产品资料"], "expected_output": "分级建议、依据和跟进话术草稿", "frequency_scale": "随有效线索产生；比例待确认"}
+  ],
+  "boundary": [
+    {"scenario": "字段完整性和授权校验", "owner": "Workflow", "reason": "必填字段与授权状态可按明确规则判断。", "handoff": "缺失字段进入补充队列；授权不明时停止处理并交销售运营确认。"},
+    {"scenario": "聊天记录提取与话术草拟", "owner": "Agent", "reason": "需要理解不同表达中的需求、预算和时间线。", "handoff": "输出必须保留原始片段依据；信息冲突或无法判断时交销售人工确认。"},
+    {"scenario": "分级确认与 CRM 写入", "owner": "Human", "reason": "分级影响销售资源投入，CRM 写入属于业务记录变更。", "handoff": "销售确认分级和话术后，Workflow 执行已授权的 CRM 写入。"}
+  ],
+  "risks": [
+    {"description": "聊天记录包含未授权的个人信息。", "risk_type": "合规", "probability": "中", "impact": "高", "mitigation": "在处理前校验授权状态并限制可见字段；不合格记录不进入模型。", "owner_role": "销售运营/合规负责人"},
+    {"description": "模型误读客户意向导致错误分级。", "risk_type": "模型", "probability": "中", "impact": "中", "mitigation": "分级仅为建议，展示依据并由销售确认；收集误判样本复盘。", "owner_role": "销售负责人"},
+    {"description": "CRM 字段映射错误造成记录污染。", "risk_type": "流程", "probability": "低", "impact": "中", "mitigation": "先在沙箱验证字段映射，写入前展示确认摘要并保留审计记录。", "owner_role": "CRM 管理员"}
+  ],
+  "acceptance": [
+    {"metric": "字段提取完整率", "target": "待客户确认", "test_method": "使用脱敏历史线索，由销售运营对照原文抽检。", "sample_size": "待客户确认；建议覆盖表单与聊天两类来源"},
+    {"metric": "CRM 写入成功率", "target": "待客户确认", "test_method": "在 CRM 沙箱验证字段映射、重复写入和失败回退。", "sample_size": "全部验收样本"}
+  ],
+  "rollout": {
+    "phases": [
+      {"stage": "G0 脱敏回放", "scope_percentage": "0%真实写入", "entry_condition": "授权校验、字段映射和评测样本已确认。", "observation_metrics": ["提取完整率", "分级一致性", "隐私拦截率"]},
+      {"stage": "G1 人工草稿", "scope_percentage": "小范围销售人员", "entry_condition": "回放通过且销售愿意逐条确认。", "observation_metrics": ["人工接受率", "修改率", "处理时长"]},
+      {"stage": "G2 受控写入", "scope_percentage": "范围待客户确认", "entry_condition": "草稿稳定并完成 CRM 沙箱验证。", "observation_metrics": ["写入成功率", "重复率", "异常升级量"]}
+    ],
+    "rollback": {"trigger_condition": "发现授权校验遗漏、字段错写或异常分级集中出现。", "rollback_action": "关闭 CRM 写入，保留草稿模式，撤销可识别的错误记录并复盘。", "recovery_time": "待客户确认"}
+  },
+  "launch_plan": [
+    {"stage": "规则与数据准备", "timeline": "第1周（建议）", "deliverables": ["字段字典", "评分规则", "授权流程", "脱敏样本"], "participants": ["销售运营", "销售", "合规", "研发"]},
+    {"stage": "回放与验收", "timeline": "第2周（建议）", "deliverables": ["评测报告", "CRM 映射验证", "异常清单"], "participants": ["销售运营", "CRM 管理员", "测试"]},
+    {"stage": "试点", "timeline": "第3周起（建议）", "deliverables": ["试点看板", "复盘记录", "扩展建议"], "participants": ["销售负责人", "销售运营", "交付负责人"]}
+  ],
+  "open_questions": ["当前线索评分规则是否已书面化，哪些条件可由系统直接判断？", "聊天记录和表单数据的授权与保留期限如何规定？", "哪些 CRM 字段允许自动写入，哪些必须销售确认？", "高价值线索的升级负责人和响应 SLA 是什么？"]
+}

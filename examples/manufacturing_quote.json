@@ -1,0 +1,39 @@
+{
+  "summary": {
+    "one_sentence": "为虚构制造企业设计一条从询价资料解析到报价草稿、人工审核和受控发布的交付路径。",
+    "business_goal": "减少报价准备中的重复查找，同时确保材料、交期和价格承诺仍由具备权限的人审核。",
+    "key_metrics": ["要点提取完整率（待确认）", "历史报价匹配可用率（待确认）", "人工修改率", "报价准备时长"]
+  },
+  "scenarios": [
+    {"name": "询价资料结构化", "trigger": "客户提交询价单和图纸资料", "inputs": ["询价单", "图纸要点", "客户要求"], "expected_output": "规格、数量、材料、交期与缺失信息清单", "frequency_scale": "按询价发生；量级待客户确认"},
+    {"name": "历史报价匹配与草稿", "trigger": "资料完整并通过格式校验", "inputs": ["结构化询价", "脱敏历史报价", "产能信息"], "expected_output": "可追溯的候选报价与报价草稿", "frequency_scale": "中频；复杂件比例待确认"}
+  ],
+  "boundary": [
+    {"scenario": "文件接收、格式与必填校验", "owner": "Workflow", "reason": "文件类型、字段和资料完整度可按规则判断。", "handoff": "资料缺失时生成补充清单；文件异常时交报价助理处理。"},
+    {"scenario": "图纸要点提取与历史报价检索", "owner": "Agent", "reason": "需要从非结构化资料归纳规格并比较候选记录。", "handoff": "输出必须标注来源和不确定项；低匹配度、特殊材料或矛盾信息交报价工程师。"},
+    {"scenario": "正式报价与交期承诺", "owner": "Human", "reason": "价格、交期和客户承诺会产生商业与履约责任。", "handoff": "报价工程师审核、修改并批准后，才允许 Workflow 生成对外版本。"}
+  ],
+  "risks": [
+    {"description": "图纸或询价单解析错误造成规格遗漏。", "risk_type": "模型", "probability": "中", "impact": "高", "mitigation": "展示原文引用和缺失项；关键规格必须人工勾选确认。", "owner_role": "报价工程师"},
+    {"description": "历史报价包含过期价格或不适用条件。", "risk_type": "数据", "probability": "中", "impact": "高", "mitigation": "为历史记录标明版本、适用期和来源；过期或缺少条件的记录不作为推荐依据。", "owner_role": "报价管理负责人"},
+    {"description": "未经授权的人员访问客户图纸。", "risk_type": "合规", "probability": "低", "impact": "高", "mitigation": "按最小权限存取，记录访问和导出；上线前确认数据保留与脱敏规则。", "owner_role": "信息安全/业务负责人"}
+  ],
+  "acceptance": [
+    {"metric": "关键规格提取准确率", "target": "待客户确认", "test_method": "由报价工程师对照已完成的脱敏询价资料逐项标注。", "sample_size": "待客户确认；建议覆盖常规、复杂和缺失资料"},
+    {"metric": "不当自动承诺次数", "target": "0", "test_method": "检查所有验收输出是否仅为草稿，且正式报价前均有人审记录。", "sample_size": "全部验收样本"}
+  ],
+  "rollout": {
+    "phases": [
+      {"stage": "G0 离线回放", "scope_percentage": "0%对外报价", "entry_condition": "历史资料已脱敏，关键规格和权限规则已确认。", "observation_metrics": ["提取准确率", "匹配可用率", "人工修改率"]},
+      {"stage": "G1 草稿助手", "scope_percentage": "小范围报价工程师", "entry_condition": "回放样本通过，人工能逐条审核。", "observation_metrics": ["审核耗时", "关键规格遗漏", "引用完整性"]},
+      {"stage": "G2 扩大试点", "scope_percentage": "范围待客户确认", "entry_condition": "草稿稳定且数据权限审查完成。", "observation_metrics": ["人工接受率", "异常升级量", "报价准备时长"]}
+    ],
+    "rollback": {"trigger_condition": "关键规格错漏、过期价格引用、权限异常或错误对外发送风险出现。", "rollback_action": "停用草稿生成和历史检索入口，切回现有人工报价流程并复盘受影响记录。", "recovery_time": "待客户确认；建议在一个工作日内完成初步处置"}
+  },
+  "launch_plan": [
+    {"stage": "资料与权限盘点", "timeline": "第1周（建议）", "deliverables": ["字段清单", "数据权限清单", "历史报价适用规则"], "participants": ["报价工程师", "销售", "信息安全", "研发"]},
+    {"stage": "回放与验收", "timeline": "第2-3周（建议）", "deliverables": ["脱敏评测集", "准确率报告", "人审清单"], "participants": ["报价工程师", "测试", "交付负责人"]},
+    {"stage": "试点与复盘", "timeline": "第4周起（建议）", "deliverables": ["试点记录", "风险台账", "扩大建议"], "participants": ["业务负责人", "报价工程师", "交付负责人"]}
+  ],
+  "open_questions": ["图纸要点的权威字段来自哪里，哪些必须人工确认？", "历史报价何时失效，如何标记适用条件和客户差异？", "哪些材料、交期和折扣绝不能由系统建议或自动发送？", "客户图纸和报价资料的访问、保留与审计规则是什么？"]
+}

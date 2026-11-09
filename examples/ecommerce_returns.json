@@ -1,0 +1,39 @@
+{
+  "summary": {
+    "one_sentence": "为虚构电商的退换货咨询设计一条规则优先、例外必人审的 Agent 交付路径。",
+    "business_goal": "缩短标准咨询的处理准备时间，同时避免超权承诺和争议件被自动放行。",
+    "key_metrics": ["标准单分流率（待确认）", "政策结论抽检正确率（待确认）", "必转人工漏转率", "平均处理时长"]
+  },
+  "scenarios": [
+    {"name": "标准退换货资格初判", "trigger": "客户提交订单号和退换货原因", "inputs": ["订单", "签收时间", "商品规则", "客户原因"], "expected_output": "资格初判、引用规则和待补材料", "frequency_scale": "高频；实际量级待客户确认"},
+    {"name": "复杂件人工升级", "trigger": "超期、争议、高价值或证据不足", "inputs": ["初判结果", "证据", "订单历史"], "expected_output": "完整升级材料包和人工待办", "frequency_scale": "低频但高风险；实际比例待确认"}
+  ],
+  "boundary": [
+    {"scenario": "订单与必填信息校验", "owner": "Workflow", "reason": "字段检查和订单查询可由固定规则重复执行。", "handoff": "缺少订单或资料时提示补充；查询失败时交客服核验。"},
+    {"scenario": "处理意见草拟", "owner": "Agent", "reason": "需要结合客户描述、订单证据和规则生成可读建议。", "handoff": "必须展示引用依据；规则冲突、证据不足或表达不确定时转售后负责人。"},
+    {"scenario": "例外退款与争议裁决", "owner": "Human", "reason": "涉及客户权益、政策例外和不可逆承诺。", "handoff": "售后负责人记录理由后，将决定回写到处理记录。"}
+  ],
+  "risks": [
+    {"description": "模型可能编造不存在的政策说明。", "risk_type": "模型", "probability": "中", "impact": "高", "mitigation": "只允许引用已确认的规则来源；无引用时禁止输出结论。", "owner_role": "客服运营负责人"},
+    {"description": "订单或客户信息缺失导致错误建议。", "risk_type": "数据", "probability": "中", "impact": "中", "mitigation": "上线前校验必填字段并把缺失项转为补充请求。", "owner_role": "数据/系统负责人"},
+    {"description": "复杂件被误走标准路径。", "risk_type": "流程", "probability": "低", "impact": "高", "mitigation": "将超期、争议、高价值和低置信度设为强制人工升级条件。", "owner_role": "售后负责人"}
+  ],
+  "acceptance": [
+    {"metric": "政策结论正确率", "target": "待客户确认；建议先以抽检门槛验收", "test_method": "使用经客服负责人标注的标准与异常样本进行盲测。", "sample_size": "待客户确认；建议覆盖正常、缺失、争议和对抗样本"},
+    {"metric": "必转人工漏转率", "target": "0", "test_method": "对超期、争议、高价值和证据不足样本核验实际路由。", "sample_size": "全部高风险测试样本"}
+  ],
+  "rollout": {
+    "phases": [
+      {"stage": "G0 沙箱", "scope_percentage": "0%真实流量", "entry_condition": "评测集、权限和升级路径已通过业务确认。", "observation_metrics": ["结论正确率", "漏转人工", "工具失败率"]},
+      {"stage": "G1 旁路试运行", "scope_percentage": "小范围人工旁路", "entry_condition": "G0 无阻塞问题，人工可逐单复核。", "observation_metrics": ["人工修改率", "升级完整性", "处理时长"]},
+      {"stage": "G2 受控灰度", "scope_percentage": "比例待客户确认", "entry_condition": "旁路结果稳定且业务负责人批准。", "observation_metrics": ["抽检正确率", "投诉相关信号", "人工接管率"]}
+    ],
+    "rollback": {"trigger_condition": "出现错误承诺、必转人工漏转、规则来源不可用或投诉异常时。", "rollback_action": "关闭写操作与自动分流，流量切回人工，并保留记录用于当日复盘。", "recovery_time": "待客户确认；建议在当班内完成切回"}
+  },
+  "launch_plan": [
+    {"stage": "需求与规则对齐", "timeline": "第1周（建议）", "deliverables": ["流程图", "边界表", "风险清单", "规则来源清单"], "participants": ["业务", "客服运营", "产品", "研发"]},
+    {"stage": "评测与旁路", "timeline": "第2-3周（建议）", "deliverables": ["评测集", "验收记录", "旁路复盘"], "participants": ["客服运营", "测试", "研发", "交付负责人"]},
+    {"stage": "灰度与复盘", "timeline": "第4周起（建议）", "deliverables": ["灰度看板", "回滚预案", "扩大或停止建议"], "participants": ["业务负责人", "客服运营", "研发", "交付负责人"]}
+  ],
+  "open_questions": ["哪些退换货规则已形成可检索且可引用的正式版本？", "哪些商品、金额、争议类型必须人工决定？", "可用于验收的历史样本由谁标注和脱敏？", "灰度期间谁拥有暂停和回滚权限？"]
+}
