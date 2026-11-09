@@ -43,9 +43,10 @@ def main() -> None:
         source = st.radio("选择输入方式", ["内置示例", "粘贴需求"], horizontal=True)
 
         if source == "内置示例":
+            example_ids = [example_id for example_id in EXAMPLE_LABELS if example_id in examples]
             selected_id = st.selectbox(
                 "选择示例",
-                options=list(examples),
+                options=example_ids,
                 format_func=lambda key: EXAMPLE_LABELS.get(key, key),
             )
             st.text_area("示例需求（只读）", value=examples[selected_id], height=180, disabled=True)
