@@ -1,39 +1,38 @@
 {
-  "summary": {
-    "one_sentence": "为虚构电商的退换货咨询设计一条规则优先、例外必人审的 Agent 交付路径。",
-    "business_goal": "缩短标准咨询的处理准备时间，同时避免超权承诺和争议件被自动放行。",
-    "key_metrics": ["标准单分流率（待确认）", "政策结论抽检正确率（待确认）", "必转人工漏转率", "平均处理时长"]
-  },
-  "scenarios": [
-    {"name": "标准退换货资格初判", "trigger": "客户提交订单号和退换货原因", "inputs": ["订单", "签收时间", "商品规则", "客户原因"], "expected_output": "资格初判、引用规则和待补材料", "frequency_scale": "高频；实际量级待客户确认"},
-    {"name": "复杂件人工升级", "trigger": "超期、争议、高价值或证据不足", "inputs": ["初判结果", "证据", "订单历史"], "expected_output": "完整升级材料包和人工待办", "frequency_scale": "低频但高风险；实际比例待确认"}
+  "summary":{"one_sentence":"为虚构电商设计一条规则优先、例外必人工的退换货客服交付路径。","business_goal":"先让标准咨询获得一致的处理建议，再把争议和例外交回有责任的人。","business_background":["示例企业的售后咨询来自 App、网页和人工客服入口。","订单、物流和政策分散在不同系统，客服需要反复查询。","本方案只生成建议和工单动作草稿，不自动退款。"],"pain_points":["标准单与争议单混在同一队列。","客服对政策口径和补件要求解释不一致。","上线后缺少把误判回流到规则的固定节奏。"],"key_metrics":[{"metric":"标准单分流率","current_value":"待确认","example_target":"示例目标值：≥40%，需与客户确认"},{"metric":"政策结论抽检正确率","current_value":"待确认","example_target":"示例目标值：≥95%，需与客户确认"},{"metric":"必转人工漏转率","current_value":"待确认","example_target":"示例目标值：0，需与客户确认"},{"metric":"平均处理时长","current_value":"待确认","example_target":"示例目标值：较基线下降20%，需与客户确认"}]},
+  "scenarios":[
+    {"name":"咨询接收","trigger":"客户发起退换货咨询","inputs":["客户描述","订单号"],"expected_output":"标准化咨询记录","frequency_scale":"高频，量级待确认","involved_systems":["客服入口","工单系统"]},
+    {"name":"订单与资料校验","trigger":"咨询记录进入处理队列","inputs":["订单号","商品","凭证"],"expected_output":"订单证据包或补件清单","frequency_scale":"高频","involved_systems":["订单系统","物流系统","工单系统"]},
+    {"name":"资格判断与处理意见草拟","trigger":"证据包完整","inputs":["订单证据","政策条款","客户原因"],"expected_output":"带条款引用的处理建议","frequency_scale":"高频","involved_systems":["政策知识库","Agent 服务"]},
+    {"name":"例外退款与争议裁决","trigger":"超期、争议、高价值或低置信度","inputs":["处理建议","争议证据","订单历史"],"expected_output":"人工裁决及理由","frequency_scale":"低频高风险","involved_systems":["售后工作台","审批流"]},
+    {"name":"结果回写工单与通知客户","trigger":"标准建议确认或人工裁决完成","inputs":["最终决定","通知模板"],"expected_output":"工单状态和客户通知","frequency_scale":"高频","involved_systems":["工单系统","消息系统"]},
+    {"name":"每周规则复盘","trigger":"每周固定复盘日","inputs":["误判样本","人工修改记录","投诉信号"],"expected_output":"规则更新建议和复盘记录","frequency_scale":"每周","involved_systems":["数据看板","知识库"]}
   ],
-  "boundary": [
-    {"scenario": "订单与必填信息校验", "owner": "Workflow", "reason": "字段检查和订单查询可由固定规则重复执行。", "handoff": "缺少订单或资料时提示补充；查询失败时交客服核验。"},
-    {"scenario": "处理意见草拟", "owner": "Agent", "reason": "需要结合客户描述、订单证据和规则生成可读建议。", "handoff": "必须展示引用依据；规则冲突、证据不足或表达不确定时转售后负责人。"},
-    {"scenario": "例外退款与争议裁决", "owner": "Human", "reason": "涉及客户权益、政策例外和不可逆承诺。", "handoff": "售后负责人记录理由后，将决定回写到处理记录。"}
+  "boundary":[
+    {"scenario":"咨询接收","owner":"Workflow","reason":"入口归档和字段映射有固定规则。","failed_handoff_to":"客服专员","handoff_condition":"订单号无法识别或入口字段缺失。"},
+    {"scenario":"订单与资料校验","owner":"Workflow","reason":"订单查询和必填校验可重复执行。","failed_handoff_to":"客服专员","handoff_condition":"系统查无订单、物流异常或凭证无法读取。"},
+    {"scenario":"资格判断与处理意见草拟","owner":"Agent","reason":"需综合客户描述、订单证据和政策文本。","failed_handoff_to":"售后负责人","handoff_condition":"规则冲突、证据不足、低置信度或涉及例外。"},
+    {"scenario":"例外退款与争议裁决","owner":"Human","reason":"涉及客户权益、资金和不可逆承诺。","failed_handoff_to":"售后负责人","handoff_condition":"负责人作出裁决并记录理由后才可继续。"},
+    {"scenario":"结果回写工单与通知客户","owner":"Workflow","reason":"已批准结果的回写和模板通知是确定动作。","failed_handoff_to":"客服专员","handoff_condition":"写入失败、通知失败或决定状态不完整。"},
+    {"scenario":"每周规则复盘","owner":"Human","reason":"修改政策解释和规则优先级需要业务责任。","failed_handoff_to":"客服运营负责人","handoff_condition":"误判样本涉及政策口径变化或投诉升级。"}
   ],
-  "risks": [
-    {"description": "模型可能编造不存在的政策说明。", "risk_type": "模型", "probability": "中", "impact": "高", "mitigation": "只允许引用已确认的规则来源；无引用时禁止输出结论。", "owner_role": "客服运营负责人"},
-    {"description": "订单或客户信息缺失导致错误建议。", "risk_type": "数据", "probability": "中", "impact": "中", "mitigation": "上线前校验必填字段并把缺失项转为补充请求。", "owner_role": "数据/系统负责人"},
-    {"description": "复杂件被误走标准路径。", "risk_type": "流程", "probability": "低", "impact": "高", "mitigation": "将超期、争议、高价值和低置信度设为强制人工升级条件。", "owner_role": "售后负责人"}
+  "human_handoff_rules":["涉及退款、赔偿、政策例外和争议裁决，一律由有权限的售后负责人决定。","Agent 输出必须展示证据来源；没有来源或置信不足时不得走标准路径。","人工修改和投诉样本必须进入每周复盘，规则变更要留版本记录。"],
+  "risks":[
+    {"description":"订单或物流数据延迟导致建议基于旧状态。","risk_type":"数据","probability":"中","impact":"高","mitigation":"显示数据更新时间，超时即停止判断并人工核验。","early_warning_signal":"查询超时或状态不一致增多。","owner_role":"系统负责人"},
+    {"description":"模型编造政策或遗漏限制条件。","risk_type":"模型","probability":"中","impact":"高","mitigation":"只允许引用确认的条款；无引用不出结论。","early_warning_signal":"抽检出现无来源结论。","owner_role":"客服运营负责人"},
+    {"description":"复杂件被误送入标准队列。","risk_type":"流程","probability":"中","impact":"高","mitigation":"超期、争议和高价值设置强制人工路由。","early_warning_signal":"人工二次升级率上升。","owner_role":"售后负责人"},
+    {"description":"客户信息被超范围读取或导出。","risk_type":"合规","probability":"低","impact":"高","mitigation":"最小字段、权限分级和访问留痕。","early_warning_signal":"异常导出或越权访问告警。","owner_role":"合规负责人"},
+    {"description":"客服不信任建议而绕过流程。","risk_type":"组织","probability":"中","impact":"中","mitigation":"旁路试用并记录人工修改原因。","early_warning_signal":"人工绕过率持续偏高。","owner_role":"客服主管"},
+    {"description":"历史工单样本偏向某类投诉。","risk_type":"数据","probability":"低","impact":"中","mitigation":"验收样本按标准、缺失、争议分层抽取。","early_warning_signal":"特定品类误判集中。","owner_role":"数据负责人"}
   ],
-  "acceptance": [
-    {"metric": "政策结论正确率", "target": "待客户确认；建议先以抽检门槛验收", "test_method": "使用经客服负责人标注的标准与异常样本进行盲测。", "sample_size": "待客户确认；建议覆盖正常、缺失、争议和对抗样本"},
-    {"metric": "必转人工漏转率", "target": "0", "test_method": "对超期、争议、高价值和证据不足样本核验实际路由。", "sample_size": "全部高风险测试样本"}
+  "acceptance":[
+    {"metric":"政策结论准确率","metric_definition":"抽检中结论与确认条款一致的比例。","example_target":"示例目标值：≥95%，需与客户确认","test_method":"售后负责人盲测标注样本。","sample_size":"示例：100条，需确认","pass_criteria":"正常与异常样本均达到目标。"},
+    {"metric":"转人工正确率","metric_definition":"应升级案例被正确升级的比例。","example_target":"示例目标值：100%，需与客户确认","test_method":"核验全部高风险样本路径。","sample_size":"全部高风险样本","pass_criteria":"无必转人工漏转。"},
+    {"metric":"处理时长","metric_definition":"从接收到建议完成的平均时长。","example_target":"示例目标值：较基线下降20%，需与客户确认","test_method":"旁路记录与人工基线对比。","sample_size":"示例：连续5个工作日","pass_criteria":"不以增加人工返工换取时长。"},
+    {"metric":"异常回退成功率","metric_definition":"触发回退后成功切回人工的比例。","example_target":"示例目标值：100%，需与客户确认","test_method":"演练工具失败和规则不可用。","sample_size":"每类异常至少1次","pass_criteria":"回退后无自动写入残留。"},
+    {"metric":"业务方满意度","metric_definition":"客服主管对建议可用性的评分。","example_target":"示例目标值：≥4/5，需与客户确认","test_method":"试点后匿名问卷和访谈。","sample_size":"全部试点客服","pass_criteria":"高频负反馈有明确改进项。"}
   ],
-  "rollout": {
-    "phases": [
-      {"stage": "G0 沙箱", "scope_percentage": "0%真实流量", "entry_condition": "评测集、权限和升级路径已通过业务确认。", "observation_metrics": ["结论正确率", "漏转人工", "工具失败率"]},
-      {"stage": "G1 旁路试运行", "scope_percentage": "小范围人工旁路", "entry_condition": "G0 无阻塞问题，人工可逐单复核。", "observation_metrics": ["人工修改率", "升级完整性", "处理时长"]},
-      {"stage": "G2 受控灰度", "scope_percentage": "比例待客户确认", "entry_condition": "旁路结果稳定且业务负责人批准。", "observation_metrics": ["抽检正确率", "投诉相关信号", "人工接管率"]}
-    ],
-    "rollback": {"trigger_condition": "出现错误承诺、必转人工漏转、规则来源不可用或投诉异常时。", "rollback_action": "关闭写操作与自动分流，流量切回人工，并保留记录用于当日复盘。", "recovery_time": "待客户确认；建议在当班内完成切回"}
-  },
-  "launch_plan": [
-    {"stage": "需求与规则对齐", "timeline": "第1周（建议）", "deliverables": ["流程图", "边界表", "风险清单", "规则来源清单"], "participants": ["业务", "客服运营", "产品", "研发"]},
-    {"stage": "评测与旁路", "timeline": "第2-3周（建议）", "deliverables": ["评测集", "验收记录", "旁路复盘"], "participants": ["客服运营", "测试", "研发", "交付负责人"]},
-    {"stage": "灰度与复盘", "timeline": "第4周起（建议）", "deliverables": ["灰度看板", "回滚预案", "扩大或停止建议"], "participants": ["业务负责人", "客服运营", "研发", "交付负责人"]}
-  ],
-  "open_questions": ["哪些退换货规则已形成可检索且可引用的正式版本？", "哪些商品、金额、争议类型必须人工决定？", "可用于验收的历史样本由谁标注和脱敏？", "灰度期间谁拥有暂停和回滚权限？"]
+  "rollout":{"phases":[{"stage":"内部试用","scope_percentage":"0%真实客户","entry_condition":"评测集和权限检查通过。","observation_metrics":["准确率","漏转率"],"observation_duration":"示例：3天，需确认","owner_role":"交付负责人"},{"stage":"小流量灰度","scope_percentage":"示例：5%，需确认","entry_condition":"内部试用无阻塞问题。","observation_metrics":["人工修改率","处理时长","投诉信号"],"observation_duration":"示例：5个工作日，需确认","owner_role":"客服主管"},{"stage":"扩大灰度","scope_percentage":"示例：30%，需确认","entry_condition":"5%阶段达到验收目标。","observation_metrics":["准确率","回退次数","满意度"],"observation_duration":"示例：2周，需确认","owner_role":"售后负责人"},{"stage":"全量与复盘","scope_percentage":"示例：100%，需确认","entry_condition":"扩大灰度稳定且业务批准。","observation_metrics":["质量趋势","投诉","成本"],"observation_duration":"示例：4周，需确认","owner_role":"业务负责人"}],"rollback":[{"trigger_condition":"出现错误退款或错误承诺。","rollback_action":"关闭自动分流和写入，全部切回人工。","recovery_time":"示例：30分钟内，需确认"},{"trigger_condition":"必转人工漏转或投诉异常。","rollback_action":"停止当前灰度比例，保留日志并人工复核。","recovery_time":"示例：当班内，需确认"},{"trigger_condition":"订单、政策或消息工具连续失败。","rollback_action":"禁用相关工具，仅保留人工工单路径。","recovery_time":"示例：1小时内，需确认"}],"post_rollback_review":"当日核对受影响工单，按数据、模型、流程归因并决定恢复、修规则或停止。"},
+  "launch_plan":[{"stage":"需求澄清","timeline":"第1周","deliverables":["流程图","问题清单"],"participants":["业务","客服"],"exit_criteria":"规则来源和责任人已确认。"},{"stage":"方案评审","timeline":"第1周","deliverables":["边界表","风险表"],"participants":["业务","研发","合规"],"exit_criteria":"做与不做范围获批准。"},{"stage":"开发与联调","timeline":"第2周","deliverables":["工具连接","日志"],"participants":["研发","测试"],"exit_criteria":"关键异常可被识别。"},{"stage":"验收测试","timeline":"第3周","deliverables":["评测报告","回退演练"],"participants":["客服","测试"],"exit_criteria":"验收项达到示例目标或有偏差决定。"},{"stage":"灰度","timeline":"第4周","deliverables":["试点看板","复盘记录"],"participants":["客服主管","交付负责人"],"exit_criteria":"放大或停止有书面结论。"},{"stage":"全量与复盘","timeline":"第5周起","deliverables":["运行报告","规则版本"],"participants":["业务负责人","运营"],"exit_criteria":"责任人确认常态化运行。"}],
+  "open_questions":[{"category":"业务","question":"哪些退换货情形可走标准路径？"},{"category":"业务","question":"谁有例外退款和赔偿的最终权限？"},{"category":"数据","question":"订单、物流和政策数据多久更新一次？"},{"category":"数据","question":"历史工单样本如何脱敏和标注？"},{"category":"系统","question":"哪些系统允许只读查询和工单回写？"},{"category":"合规","question":"客户信息最小字段和保存期限是什么？"}]
 }

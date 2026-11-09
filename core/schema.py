@@ -54,7 +54,7 @@ class AcceptanceItem(BaseModel):
     example_target: str = Field(min_length=1)
     test_method: str = Field(min_length=5)
     sample_size: str = Field(min_length=1)
-    pass_criteria: str = Field(min_length=5)
+    pass_criteria: str = Field(min_length=3)
 
 
 class RolloutPhase(BaseModel):
