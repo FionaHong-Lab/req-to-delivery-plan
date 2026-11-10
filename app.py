@@ -38,7 +38,13 @@ def main() -> None:
         st.write("**输入**：一段客户提出的模糊 AI 需求。")
         st.write("**输出**：一份交付经理视角的落地方案（8 部分）。")
         st.write("**价值**：把“需求 → 能上线”中间的拆解过程标准化，先出一版再和客户对齐。")
-    st.graphviz_chart("digraph { rankdir=LR; node [shape=box style=rounded]; 客户需求 -> 摘要 -> 场景拆解 -> 边界划分 -> 风险 -> 验收 -> 灰度回滚 -> 上线计划 -> 待澄清 }")
+    st.graphviz_chart("""digraph {
+        rankdir=LR; node [shape=box style=rounded];
+        demand [label="客户需求"]; summary [label="1 摘要"]; scenarios [label="2 场景拆解"];
+        boundary [label="3 边界划分"]; risks [label="4 风险"]; acceptance [label="5 验收"];
+        rollout [label="6 灰度/回滚"]; launch [label="7 上线计划"]; questions [label="8 待澄清"];
+        demand -> summary -> scenarios -> boundary -> risks -> acceptance -> rollout -> launch -> questions;
+    }""")
     st.markdown("**三步怎么用**：① 左侧选一个示例　② 点“展示示例方案”　③ 按 1→8 顺序看标签，重点看 3、4、6。")
 
     left, right = st.columns([1, 2], gap="large")
