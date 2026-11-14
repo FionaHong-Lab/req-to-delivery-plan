@@ -25,11 +25,19 @@
 
 ## 界面截图
 
-当前环境已通过浏览器核验页面，但无头浏览器无法稳定等待 Streamlit 动态组件，因此没有提交空白截图。请在本地运行、**关闭讲解模式**后补充下列 3 张真实页面截图；README 会自动按这些路径显示：
+以下截图在本地运行应用后拍摄，并已关闭讲解模式。所有内容均为虚构的「示例数据」。
 
-1. `docs/screenshots/home.png`：首页，显示「离线示例模式」和输入区。
-2. `docs/screenshots/boundary-table.png`：打开「3. 边界」后的 Workflow / Agent / Human 表。
-3. `docs/screenshots/risk-table.png`：打开「4. 风险」后的风险清单。
+1. 首页：离线示例模式与输入区。
+
+![首页，显示离线示例模式和输入区](docs/screenshots/home.png)
+
+2. 「3. 边界」：Workflow / Agent / Human 分工表与交接条件。
+
+![边界表](docs/screenshots/boundary-table.png)
+
+3. 「4. 风险」：风险清单，含类型、缓解、预警和负责人。
+
+![风险表](docs/screenshots/risk-table.png)
 
 ## 面试演示脚本（3 分钟）
 
